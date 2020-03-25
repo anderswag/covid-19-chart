@@ -6,7 +6,10 @@
 
 <script>
 import TimeSeriesChart from "./components/TimeSeriesChart";
+
 const STORAGE_KEY_DATA = "data";
+const STORAGE_KEY_TIMESTAMP = "timestamp";
+const ONE_HOUR = 60 * 60 * 1000;
 
 export default {
   components: {
@@ -15,9 +18,7 @@ export default {
   data() {
     return {
       datacollection: null,
-      options: {
-        responsive: true
-      }
+      options: {}
     };
   },
   mounted() {
@@ -36,11 +37,18 @@ export default {
         ]
       };
       const localStorageData = localStorage.getItem(STORAGE_KEY_DATA);
+      const localStorageTimestamp = localStorage.getItem(STORAGE_KEY_TIMESTAMP);
 
-      if (!localStorageData) {
+      // Fetch if the data is 1 hours old
+      const shouldFetch =
+        !localStorageData ||
+        Date.now() - JSON.parse(localStorageTimestamp) > ONE_HOUR;
+
+      if (shouldFetch) {
         fetch("https://pomber.github.io/covid19/timeseries.json")
           .then(response => response.json())
           .then(data => {
+            console.log("FETCHED DATA");
             data["Canada"].forEach(({ date, confirmed, deaths, recovered }) => {
               collection.labels.push(date);
               collection.datasets[0][STORAGE_KEY_DATA].push(
@@ -51,6 +59,10 @@ export default {
           .finally(() => {
             this.datacollection = collection;
             localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(collection));
+            localStorage.setItem(
+              STORAGE_KEY_TIMESTAMP,
+              JSON.stringify(Date.now())
+            );
           });
       } else {
         this.datacollection = JSON.parse(localStorageData);
